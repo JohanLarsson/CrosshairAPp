@@ -1,8 +1,7 @@
-﻿namespace CrosshairApp
-{
-    using System.Windows;
+﻿namespace CrosshairApp;
 
-    public partial class App : Application
-    {
-    }
+using System.Windows;
+
+public partial class App : Application
+{
 }

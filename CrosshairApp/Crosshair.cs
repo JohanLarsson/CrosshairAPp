@@ -1,35 +1,32 @@
-﻿namespace CrosshairApp
+﻿namespace CrosshairApp;
+
+using System.Windows;
+using System.Windows.Media;
+
+public sealed class Crosshair : DrawingVisual
 {
-    using System.Windows;
-    using System.Windows.Media;
+    private Pen? pen;
 
-
-
-    public sealed class Crosshair : DrawingVisual
+    public void Position(Point? position, Size renderSize)
     {
-        private Pen? pen;
+        using var drawingContext = this.RenderOpen();
 
-        public void Position(Point? position, Size renderSize)
+        if (position is { } p)
         {
-            using var drawingContext = this.RenderOpen();
+            this.pen ??= CreatePen();
+            drawingContext.DrawLine( this.pen, new Point(0, p.Y), new Point(renderSize.Width, p.Y));
+            drawingContext.DrawLine(this.pen, new Point(p.X, 0), new Point(p.X, renderSize.Height));
 
-            if (position is { } p)
+            static Pen CreatePen()
             {
-                this.pen ??= CreatePen();
-                drawingContext.DrawLine( this.pen, new Point(0, p.Y), new Point(renderSize.Width, p.Y));
-                drawingContext.DrawLine(this.pen, new Point(p.X, 0), new Point(p.X, renderSize.Height));
-
-                static Pen CreatePen()
-                {
-                    var pen = new Pen(Brushes.Black, 0.5);
-                    pen.Freeze();
-                    return pen;
-                }
+                var pen = new Pen(Brushes.Black, 0.5);
+                pen.Freeze();
+                return pen;
             }
         }
-
-        protected override GeometryHitTestResult? HitTestCore(GeometryHitTestParameters hitTestParameters) => null;
-
-        protected override HitTestResult? HitTestCore(PointHitTestParameters hitTestParameters) => null;
     }
+
+    protected override GeometryHitTestResult? HitTestCore(GeometryHitTestParameters hitTestParameters) => null;
+
+    protected override HitTestResult? HitTestCore(PointHitTestParameters hitTestParameters) => null;
 }
