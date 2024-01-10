@@ -15,6 +15,8 @@
             this.AddVisualChild(this.crosshair);
         }
 
+
+
         protected override int VisualChildrenCount => 1;
 
         protected override Visual GetVisualChild(int index) => index switch
@@ -35,10 +37,6 @@
             this.pen ??= CreatePen();
             for (var i = 0; i < 1000; i++)
             {
-                drawingContext.DrawRectangle(Brushes.Red, null, new Rect(new Point(i, i), new Size(1, 1)));
-                drawingContext.DrawRectangle(Brushes.Blue, null, new Rect(new Point(i, i - 20), new Size(2, 2)));
-                drawingContext.DrawRectangle(Brushes.Yellow, null, new Rect(new Point(i, i - 30), new Size(3, 3)));
-                drawingContext.DrawRectangle(Brushes.HotPink, null, new Rect(new Point(i, i - 40), new Size(4, 4)));
                 drawingContext.DrawLine(this.pen, new Point(i, i), new Point(i + 1, i + 1));
                 drawingContext.DrawLine(this.pen, new Point(i, i + 10), new Point(i + 1, i + 11));
                 drawingContext.DrawLine(this.pen, new Point(i, i + 20), new Point(i + 1, i + 21));
