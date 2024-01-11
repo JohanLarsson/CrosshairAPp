@@ -55,8 +55,10 @@ public sealed class Chart : FrameworkElement
         {
             var bmp = new WriteableBitmap(1100, 1100, 96.0, 96.0, PixelFormats.Pbgra32, null);
             bmp.Lock();
-            using (var bitmap = new System.Drawing.Bitmap(bmp.PixelWidth, bmp.PixelHeight, bmp.BackBufferStride, PixelFormat.Format32bppPArgb, bmp.BackBuffer))
+            var  useGfx = true;
+            if (useGfx)
             {
+                using var bitmap = new System.Drawing.Bitmap(bmp.PixelWidth, bmp.PixelHeight, bmp.BackBufferStride, PixelFormat.Format32bppPArgb, bmp.BackBuffer);
                 using var gfx = System.Drawing.Graphics.FromImage(bitmap);
                 using var pen = new System.Drawing.Pen(System.Drawing.Color.Black, 0.5f);
                 for (var i = 0; i < n; i++)
@@ -67,6 +69,20 @@ public sealed class Chart : FrameworkElement
                     gfx.DrawLine(pen, new System.Drawing.Point(i, i + 30), new System.Drawing.Point(i + 1, i + 31));
                     gfx.DrawLine(pen, new System.Drawing.Point(i, i + 40), new System.Drawing.Point(i + 1, i + 41));
                     gfx.DrawLine(pen, new System.Drawing.Point(i, i + 50), new System.Drawing.Point(i + 1, i + 51));
+                }
+            }
+            else
+            {
+                using var pen = new System.Drawing.Pen(System.Drawing.Color.Black, 0.5f);
+                for (var i = 0; i < n; i++)
+                {
+                    var color = WriteableBitmapExtensions.ConvertColor(Colors.Black);
+                    bmp.DrawLine(new System.Drawing.Point(i, i), new System.Drawing.Point(i + 1, i + 1), color);
+                    bmp.DrawLine(new System.Drawing.Point(i, i + 10), new System.Drawing.Point(i + 1, i + 11), color);
+                    bmp.DrawLine(new System.Drawing.Point(i, i + 20), new System.Drawing.Point(i + 1, i + 21), color);
+                    bmp.DrawLine(new System.Drawing.Point(i, i + 30), new System.Drawing.Point(i + 1, i + 31), color);
+                    bmp.DrawLine(new System.Drawing.Point(i, i + 40), new System.Drawing.Point(i + 1, i + 41), color);
+                    bmp.DrawLine(new System.Drawing.Point(i, i + 50), new System.Drawing.Point(i + 1, i + 51), color);
                 }
             }
 
