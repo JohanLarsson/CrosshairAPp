@@ -9,6 +9,7 @@
     Width="1100"
     Height="1100"
     mc:Ignorable="d"
+    Background="LightBlue"
     KeyUp="MainWindow_OnKeyUp">
     <crosshairApp:Chart x:Name="Chart" />
 </Window>

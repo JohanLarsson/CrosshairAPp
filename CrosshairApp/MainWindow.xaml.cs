@@ -7,7 +7,7 @@ public partial class MainWindow : Window
 {
     public MainWindow()
     {
-        this.InitializeComponent();
+        InitializeComponent();
     }
 
     protected override void OnPreviewMouseMove(MouseEventArgs e)
@@ -29,7 +29,12 @@ public partial class MainWindow : Window
     {
         if (e.Key == Key.Space)
         {
-            Chart.UseBitmap = !Chart.UseBitmap;
+            Chart.Mode = Chart.Mode switch
+            {
+                Chart.Gfx => Chart.Direct,
+                Chart.Direct => Chart.DrawingContext,
+                _ => Chart.Gfx,
+            };
         }
     }
 }

@@ -20,7 +20,7 @@ public static class WriteableBitmapExtensions
     {
         if (opacity < 0.0 || opacity > 1.0)
         {
-            throw new ArgumentOutOfRangeException("opacity", "Opacity must be between 0.0 and 1.0");
+            throw new ArgumentOutOfRangeException(nameof(opacity), "Opacity must be between 0.0 and 1.0");
         }
 
         color.A = (byte)(color.A * opacity);
@@ -110,12 +110,8 @@ public static class WriteableBitmapExtensions
             { // x increases by +/- 1
                 if (dx < 0)
                 {
-                    int t = x1;
-                    x1 = x2;
-                    x2 = t;
-                    t = y1;
-                    y1 = y2;
-                    y2 = t;
+                    (x2, x1) = (x1, x2);
+                    (y2, y1) = (y1, y2);
                 }
 
                 // Init steps and start
