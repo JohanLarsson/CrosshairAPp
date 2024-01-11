@@ -1,6 +1,7 @@
 ﻿namespace CrosshairApp;
 
 using System;
+using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Input;
@@ -24,6 +25,8 @@ public sealed class Chart : FrameworkElement
             FrameworkPropertyMetadataOptions.AffectsRender));
 
     private readonly Crosshair crosshair = new();
+    private readonly WriteableBitmap bmp = new(1100, 1100, 96.0, 96.0, PixelFormats.Pbgra32, null);
+    private readonly Stopwatch stopwatch = new();
     private Pen? pen;
 
     public Chart()
@@ -55,16 +58,14 @@ public sealed class Chart : FrameworkElement
     protected override void OnRender(DrawingContext drawingContext)
     {
         var mode = Mode;
-        drawingContext.DrawText(new FormattedText(mode, CultureInfo.GetCultureInfo("en-us"), FlowDirection.LeftToRight, new Typeface("Verdana"), 18, Brushes.Black, null, VisualTreeHelper.GetDpi(this).PixelsPerDip), new Point(200, 100));
+        stopwatch.Restart();
         const int n = 1_000;
         if (mode == Gfx)
         {
-            var bmp = new WriteableBitmap(1100, 1100, 96.0, 96.0, PixelFormats.Pbgra32, null);
             bmp.Lock();
-            using (var bitmap = new System.Drawing.Bitmap(bmp.PixelWidth, bmp.PixelHeight, bmp.BackBufferStride,
-                       PixelFormat.Format32bppPArgb, bmp.BackBuffer))
+            using (var temp = new System.Drawing.Bitmap(bmp.PixelWidth, bmp.PixelHeight, bmp.BackBufferStride, PixelFormat.Format32bppPArgb, bmp.BackBuffer))
             {
-                using var gfx = System.Drawing.Graphics.FromImage(bitmap);
+                using var gfx = System.Drawing.Graphics.FromImage(temp);
                 using var pen = new System.Drawing.Pen(System.Drawing.Color.Black, 0.5f);
                 for (var i = 0; i < n; i++)
                 {
@@ -83,7 +84,6 @@ public sealed class Chart : FrameworkElement
         }
         else if(mode == Direct)
         {
-            var bmp = new WriteableBitmap(1100, 1100, 96.0, 96.0, PixelFormats.Pbgra32, null);
             bmp.Lock();
             var color = WriteableBitmapExtensions.ConvertColor(Colors.Black);
             for (var i = 0; i < n; i++)
@@ -119,5 +119,8 @@ public sealed class Chart : FrameworkElement
                 return pen;
             }
         }
+
+        stopwatch.Stop();
+        drawingContext.DrawText(new FormattedText($"{mode} {stopwatch.ElapsedMilliseconds} ms", CultureInfo.GetCultureInfo("en-us"), FlowDirection.LeftToRight, new Typeface("Verdana"), 18, Brushes.Black, null, VisualTreeHelper.GetDpi(this).PixelsPerDip), new Point(200, 100));
     }
 }
