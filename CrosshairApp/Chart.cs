@@ -14,7 +14,9 @@ public sealed class Chart : FrameworkElement
         nameof(UseBitmap),
         typeof(bool),
         typeof(Chart),
-        new PropertyMetadata(true));
+        new FrameworkPropertyMetadata(
+            true,
+            FrameworkPropertyMetadataOptions.AffectsRender));
 
     private readonly Crosshair crosshair = new();
     private Pen? pen;
@@ -47,8 +49,8 @@ public sealed class Chart : FrameworkElement
 
     protected override void OnRender(DrawingContext drawingContext)
     {
+        drawingContext.DrawRectangle(UseBitmap ? Brushes.Red : Brushes.Blue, null, new Rect(new Point(200,0), new Size(100,100)));
         const int n = 1_000;
-
         if (UseBitmap)
         {
             var bmp = new WriteableBitmap(1100, 1100, 96.0, 96.0, PixelFormats.Pbgra32, null);

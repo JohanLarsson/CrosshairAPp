@@ -24,4 +24,12 @@ public partial class MainWindow : Window
         //this.VerticalLine.X2 = p.X;
         //this.VerticalLine.Y1 = renderSize.Height;
     }
+
+    private void MainWindow_OnKeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.Space)
+        {
+            Chart.UseBitmap = !Chart.UseBitmap;
+        }
+    }
 }
