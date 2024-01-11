@@ -9,5 +9,5 @@
     Width="1100"
     Height="1100"
     mc:Ignorable="d">
-    <crosshairApp:Chart />
+    <crosshairApp:Chart x:Name="Chart" />
 </Window>
