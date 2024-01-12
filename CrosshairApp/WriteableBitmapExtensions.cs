@@ -2,89 +2,197 @@
 
 using System;
 using System.Windows;
+using System.Windows.Documents;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
 public static class WriteableBitmapExtensions
 {
-    /// <summary>
-    /// Bitfields used to partition the space into 9 regions
-    /// </summary>
+    internal const int SizeOfArgb = 4;
     private const byte INSIDE = 0; // 0000
     private const byte LEFT = 1;   // 0001
     private const byte RIGHT = 2;  // 0010
     private const byte BOTTOM = 4; // 0100
     private const byte TOP = 8;    // 1000
 
-    public static int ConvertColor(double opacity, Color color)
+    public static int IntColor(double opacity, System.Windows.Media.Color color)
     {
-        if (opacity < 0.0 || opacity > 1.0)
+        if (opacity is < 0.0 or > 1.0)
         {
             throw new ArgumentOutOfRangeException(nameof(opacity), "Opacity must be between 0.0 and 1.0");
         }
 
         color.A = (byte)(color.A * opacity);
 
-        return ConvertColor(color);
+        return IntColor(color);
     }
 
-    public static int ConvertColor(Color color)
+    public static int IntColor(System.Windows.Media.Color color)
     {
-        var col = 0;
-
-        if (color.A != 0)
+        if (color.A == 0)
         {
-            var a = color.A + 1;
-            col = (color.A << 24)
-                  | ((byte)((color.R * a) >> 8) << 16)
-                  | ((byte)((color.G * a) >> 8) << 8)
-                  | ((byte)((color.B * a) >> 8));
+            return 0;
         }
 
-        return col;
+        var a = color.A + 1;
+        return (color.A << 24)
+               | ((byte)((color.R * a) >> 8) << 16)
+               | ((byte)((color.G * a) >> 8) << 8)
+               | ((byte)((color.B * a) >> 8));
     }
 
-    /// <summary>
-    /// Draws a colored line by connecting two points using an optimized DDA. 
-    /// Uses the pixels array and the width directly for best performance.
-    /// </summary>
-    /// <param name="bmp">The context containing the pixels as int RGBA value.</param>
-    /// <param name="pixelWidth">The width of one scanline in the pixels array.</param>
-    /// <param name="pixelHeight">The height of the bitmap.</param>
-    /// <param name="x1">The x-coordinate of the start point.</param>
-    /// <param name="y1">The y-coordinate of the start point.</param>
-    /// <param name="x2">The x-coordinate of the end point.</param>
-    /// <param name="y2">The y-coordinate of the end point.</param>
-    /// <param name="color">The color for the line.</param>
-    /// <param name="clipRect">The region in the image to restrict drawing to.</param>
-    public static void DrawLine(this WriteableBitmap bmp, int x1, int y1, int x2, int y2, int color, Rect? clipRect = null)
+    public static void Clear(this WriteableBitmap bmp, int color)
     {
         unsafe
         {
-            // Get clip coordinates
-            int clipX1 = 0;
-            int clipX2 = bmp.PixelWidth;
-            int clipY1 = 0;
-            int clipY2 = bmp.PixelHeight;
-            if (clipRect.HasValue)
+
+            var pixels = new Span<int>((int*)bmp.BackBuffer, bmp.PixelWidth * bmp.PixelHeight);
+            // Fill first line
+            for (var i = 0; i < bmp.PixelWidth; i++)
             {
-                var c = clipRect.Value;
-                clipX1 = (int)c.X;
-                clipX2 = (int)(c.X + c.Width);
-                clipY1 = (int)c.Y;
-                clipY2 = (int)(c.Y + c.Height);
+                pixels[i] = color;
             }
 
+            // Copy first line
+            var line = pixels.Slice(0, bmp.PixelWidth);
+            for (var i = 0; i < bmp.PixelHeight; i++)
+            {
+                line.CopyTo(pixels.Slice(i * bmp.PixelWidth, line.Length));
+            }
+        }
+    }
+
+    public static void Clear(this WriteableBitmap bmp, Color color) => Clear(bmp, IntColor(color));
+
+    /// <summary>
+    /// Draws a filled rectangle with or without alpha blending (default = false).
+    /// x2 has to be greater than x1 and y2 has to be greater than y1.
+    /// </summary>
+    /// <param name="bmp">The WriteableBitmap.</param>
+    /// <param name="x1">The x-coordinate of the bounding rectangle's left side.</param>
+    /// <param name="y1">The y-coordinate of the bounding rectangle's top side.</param>
+    /// <param name="x2">The x-coordinate of the bounding rectangle's right side.</param>
+    /// <param name="y2">The y-coordinate of the bounding rectangle's bottom side.</param>
+    /// <param name="color">The color.</param>
+    public static void DrawRectangle(this WriteableBitmap bmp, int x1, int y1, int x2, int y2, int color)
+    {
+        if ((x1 < 0 && x2 < 0) ||
+            (y1 < 0 && y2 < 0) ||
+            (x1 >= bmp.PixelWidth && x2 >= bmp.PixelWidth) ||
+            (y1 >= bmp.PixelHeight && y2 >= bmp.PixelHeight))
+        {
+            return;
+        }
+
+        x1 = Math.Clamp(x1, 0, bmp.PixelWidth - 1);
+        x2 = Math.Clamp(x2, 0, bmp.PixelWidth - 1);
+        y1 = Math.Clamp(y1, 0, bmp.PixelHeight - 1);
+        y2 = Math.Clamp(y2, 0, bmp.PixelHeight - 1);
+        var left = Math.Min(x1, x2);
+        var width = Math.Abs(x1 - x2) + 1;
+        var top = Math.Min(y1, y2);
+        var bottom = Math.Max(y1, y2);
+        unsafe
+        {
+            var pixels = new Span<int>((int*)bmp.BackBuffer, bmp.PixelWidth * bmp.PixelHeight);
+            // Fill first line
+            var start = top * bmp.PixelWidth + left;
+            var end = start + width;
+            for (var i = start; i < end; i++)
+            {
+                pixels[i] = color;
+            }
+
+            // Copy first line
+            var line = pixels.Slice(start, width);
+            var y = top + 1;
+            while (y <= bottom)
+            {
+                line.CopyTo(pixels.Slice(y * bmp.PixelWidth + left, line.Length));
+                y++;
+            }
+        }
+    }
+
+    public static void DrawRectangle(this WriteableBitmap bmp, int x1, int y1, int x2, int y2, Color color) => bmp.DrawRectangle(x1, y1, x2, y2, IntColor(color));
+
+    public static void DrawRectangle(this WriteableBitmap bmp, System.Drawing.Point p1, System.Drawing.Point p2, Color color) => bmp.DrawRectangle(p1.X, p1.Y, p2.X, p2.Y, IntColor(color));
+
+    public static void DrawHorizontalLine(this WriteableBitmap bmp, int x1, int x2, int y, int color)
+    {
+        if ((x1 < 0 && x2 < 0) ||
+            y < 0 ||
+            (x1 >= bmp.PixelWidth && x2 >= bmp.PixelWidth) ||
+            y >= bmp.PixelHeight)
+        {
+            return;
+        }
+
+        x1 = Math.Clamp(x1, 0, bmp.PixelWidth - 1);
+        x2 = Math.Clamp(x2, 0, bmp.PixelWidth - 1);
+        var left = Math.Min(x1, x2);
+        var width = Math.Abs(x1 - x2) + 1;
+        unsafe
+        {
+            var pixels = new Span<int>((int*)bmp.BackBuffer, bmp.PixelWidth * bmp.PixelHeight);
+            // Fill first line
+            var start = y * bmp.PixelWidth + left;
+            var end = start + width;
+            for (var i = start; i < end; i++)
+            {
+                pixels[i] = color;
+            }
+        }
+    }
+
+    public static void DrawHorizontalLine(this WriteableBitmap bmp, int x1, int x2, int y, Color color)
+        => DrawHorizontalLine(bmp, x1, x2, y, IntColor(color));
+
+    public static void DrawVerticalLine(this WriteableBitmap bmp, int x, int y1, int y2, int color)
+    {
+        if (x < 0 ||
+            x >= bmp.PixelWidth ||
+            (y1 < 0 && y2 < 0) ||
+            (y1 >= bmp.PixelHeight && y2 >= bmp.PixelHeight))
+        {
+            return;
+        }
+
+        y1 = Math.Clamp(y1, 0, bmp.PixelHeight - 1);
+        y2 = Math.Clamp(y2, 0, bmp.PixelHeight - 1);
+        var top = Math.Min(y1, y2);
+        var bottom = Math.Max(y1, y2);
+        unsafe
+        {
+            var pixels = new Span<int>((int*)bmp.BackBuffer, bmp.PixelWidth * bmp.PixelHeight);
+            var y = top;
+            while (y <= bottom)
+            {
+                pixels[y * bmp.PixelWidth + x] = color;
+                y++;
+            }
+        }
+    }
+
+    public static void DrawVerticalLine(this WriteableBitmap bmp, int x, int y1, int y2, Color color) =>
+        DrawVerticalLine(bmp, x, y1, y2, IntColor(color));
+
+    public static void DrawLine(this WriteableBitmap bmp, int x1, int y1, int x2, int y2, int color, Rect? clip = null)
+    {
+        unsafe
+        {
+            var clipRect = clip ?? new Rect(new Size(bmp.PixelWidth, bmp.PixelHeight));
             // Perform cohen-sutherland clipping if either point is out of the viewport
-            if (!CohenSutherlandLineClip(new Rect(clipX1, clipY1, clipX2 - clipX1, clipY2 - clipY1), ref x1, ref y1, ref x2, ref y2)) return;
+            if (!CohenSutherlandLineClip(clipRect, ref x1, ref y1, ref x2, ref y2))
+            {
+                return;
+            }
 
             var pixels = (int*)bmp.BackBuffer;
 
             // Distance start and end point
             int dx = x2 - x1;
             int dy = y2 - y1;
-
-            const int PRECISION_SHIFT = 8;
 
             // Determine slope (absolute value)
             int lenX, lenY;
@@ -106,6 +214,7 @@ public static class WriteableBitmapExtensions
                 lenX = -dx;
             }
 
+            const int PRECISION_SHIFT = 8;
             if (lenX > lenY)
             { // x increases by +/- 1
                 if (dx < 0)
@@ -123,7 +232,7 @@ public static class WriteableBitmapExtensions
 
                 if (y1 < y2)
                 {
-                    if (y1 >= clipY2 || y2 < clipY1)
+                    if (y1 >= clipRect.Bottom || y2 < clipRect.Top)
                     {
                         return;
                     }
@@ -151,7 +260,7 @@ public static class WriteableBitmapExtensions
                 }
                 else
                 {
-                    if (y2 >= clipY2 || y1 < clipY1)
+                    if (y2 > clipRect.Bottom || y1 < clipRect.Top)
                     {
                         return;
                     }
@@ -238,7 +347,7 @@ public static class WriteableBitmapExtensions
 
                 if (x1 < x2)
                 {
-                    if (x1 >= clipX2 || x2 < clipX1)
+                    if (x1 >= clipRect.Right || x2 < clipRect.Left)
                     {
                         return;
                     }
@@ -266,7 +375,7 @@ public static class WriteableBitmapExtensions
                 }
                 else
                 {
-                    if (x2 >= clipX2 || x1 < clipX1)
+                    if (x2 >= clipRect.Right || x1 < clipRect.Left)
                     {
                         return;
                     }
@@ -320,6 +429,9 @@ public static class WriteableBitmapExtensions
 
     public static void DrawLine(this WriteableBitmap bmp, System.Drawing.Point p1, System.Drawing.Point p2, int color, Rect? clipRect = null)
         => DrawLine(bmp, p1.X, p1.Y, p2.X, p2.Y, color, clipRect);
+
+    public static void DrawLine(this WriteableBitmap bmp, System.Drawing.Point p1, System.Drawing.Point p2, System.Windows.Media.Color color, Rect? clipRect = null)
+        => DrawLine(bmp, p1.X, p1.Y, p2.X, p2.Y, IntColor(color), clipRect);
 
     internal static bool CohenSutherlandLineClip(Rect extents, ref int xi0, ref int yi0, ref int xi1, ref int yi1)
     {

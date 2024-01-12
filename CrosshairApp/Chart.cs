@@ -85,7 +85,7 @@ public sealed class Chart : FrameworkElement
         else if(mode == Direct)
         {
             bmp.Lock();
-            var color = WriteableBitmapExtensions.ConvertColor(Colors.Black);
+            var color = WriteableBitmapExtensions.IntColor(Colors.Black);
             for (var i = 0; i < n; i++)
             {
                 bmp.DrawLine(new System.Drawing.Point(i, i), new System.Drawing.Point(i + 1, i + 1), color);
